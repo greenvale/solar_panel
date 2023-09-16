@@ -54,7 +54,8 @@ void main()
 
 class Environment:
 
-    def __init__(self, vertices, indices):
+    def __init__(self, vertices, indices, window_size = 500):
+        self.window_size = window_size
         self.vertices = vertices
         self.indices = indices
         self.pitch = 20
@@ -67,7 +68,7 @@ class Environment:
         self.img_width = image.width
         self.img_height = image.height
     
-    def setup(self, window_size=500):
+    def setup(self):
         #glfw callback functions
         def window_resize(window, width, height):
             glViewport(0, 0, width, height)
@@ -82,7 +83,7 @@ class Environment:
         glfw.window_hint(glfw.OPENGL_PROFILE, glfw.OPENGL_CORE_PROFILE)
 
         #creating the window
-        self.window = glfw.create_window(window_size, window_size, "Cell Logit Calculator", None, None)
+        self.window = glfw.create_window(self.window_size, self.window_size, "Cell Logit Calculator", None, None)
 
         #Check if window was created
         if not self.window:
@@ -129,7 +130,7 @@ class Environment:
 
         self.rotation_loc = glGetUniformLocation(shader, "rotation")
 
-    def __call__(self):
+    def __call__(self, callback_fcn):
         self.setup()
 
         while not glfw.window_should_close(self.window):
@@ -144,11 +145,13 @@ class Environment:
             glUniformMatrix4fv(self.rotation_loc, 1, GL_FALSE, pyrr.matrix44.multiply(rot_y, rot_x))
             glDrawElements(GL_TRIANGLES, len(self.indices), GL_UNSIGNED_INT, None)
             
-            #logits = calculate_logits()
-            #logit_table[label, sample_n, (pitch-10)/2, azi/2] = logits
+            new_pitch, new_azi, new_img_path = callback_fcn(self.pitch, self.azi, self.window_size)
 
-            #print("label {}, sample {}, pitch {}, azi {}".format(label, sample_n, pitch, azi))
-            #print("Similarity: {}".format(logits[label] * 100))
+            self.pitch = new_pitch
+            self.azi = new_azi
+
+            if new_img_path:
+                self.set_image(new_img_path)
 
             glfw.swap_buffers(self.window)
 
