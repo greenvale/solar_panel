@@ -6,6 +6,7 @@ from PIL import Image
 import cv2
 import sim
 import math
+import numpy as np
 
 vertex_src = """
 
@@ -60,6 +61,8 @@ class Environment:
         self.indices = indices
         self.pitch = 20
         self.azi = 0
+        self.img_data = None
+        self.timestamp = 0
     
     def set_image(self, path):
         image = Image.open(path)
@@ -130,29 +133,41 @@ class Environment:
 
         self.rotation_loc = glGetUniformLocation(shader, "rotation")
 
-    def __call__(self, callback_fcn):
-        self.setup()
+    def render(self):
+        glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT)
 
-        while not glfw.window_should_close(self.window):
-            glfw.poll_events()
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, self.img_width, self.img_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, self.img_data)
+        
+        rot_x = pyrr.Matrix44.from_x_rotation(self.pitch * math.pi / 180)
+        rot_y = pyrr.Matrix44.from_y_rotation(self.azi * math.pi / 180)
+        glUniformMatrix4fv(self.rotation_loc, 1, GL_FALSE, pyrr.matrix44.multiply(rot_y, rot_x))
+        glDrawElements(GL_TRIANGLES, len(self.indices), GL_UNSIGNED_INT, None)
 
-            glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT)
+        glfw.swap_buffers(self.window)
 
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, self.img_width, self.img_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, self.img_data)
-                
-            rot_x = pyrr.Matrix44.from_x_rotation(self.pitch * math.pi / 180)
-            rot_y = pyrr.Matrix44.from_y_rotation(self.azi * math.pi / 180)
-            glUniformMatrix4fv(self.rotation_loc, 1, GL_FALSE, pyrr.matrix44.multiply(rot_y, rot_x))
-            glDrawElements(GL_TRIANGLES, len(self.indices), GL_UNSIGNED_INT, None)
-            
-            new_pitch, new_azi, new_img_path = callback_fcn(self.pitch, self.azi, self.window_size)
+    """
+    # TEMPLATE FOR RUNNING ENVRIONMENT
 
-            self.pitch = new_pitch
-            self.azi = new_azi
+    # setup simulation
+    self.setup()
 
-            if new_img_path:
-                self.set_image(new_img_path)
+    # loop
+    while not glfw.window_should_close(self.window):
+        glfw.poll_events()
 
-            glfw.swap_buffers(self.window)
+        # update simulation
+        self.render()
 
-        glfw.terminate()
+        # calculate new pitch, new azi and new image path
+        ...
+        new_pitch, new_azi, new_img_path = ...
+        ...
+
+        self.pitch = new_pitch
+        self.azi = new_azi
+        if new_img_path:
+            self.set_image(new_img_path)
+
+    glfw.terminate()
+
+    """
